@@ -427,6 +427,71 @@ int q_descend(struct list_head *head)
  * order */
 int q_merge(struct list_head *head, bool descend)
 {
+    if (head == NULL || list_empty(head) != 0)
+        return 0;
+    else if (list_is_singular(head) != 0)
+        return (q_size(list_entry(head->next, queue_contex_t, chain)->q));
+    else {
+        struct list_head *merge_list =
+            list_entry(head->next, queue_contex_t, chain)->q;
+        struct list_head *node;
+        struct list_head *safe;
+        struct list_head *src_list;
+        struct list_head *merge_node;
+        struct list_head *src_node;
+        struct list_head *merge_safe;
+        struct list_head *src_safe;
+        struct list_head *tail;
+        list_for_each_safe (node, safe, head) {
+            if (node != head->next) {
+                src_list = list_entry(node, queue_contex_t, chain)->q;
+                src_node = src_list->next;
+                merge_node = merge_list->next;
+                tail = merge_list->prev;
+                while (merge_node != merge_list && src_node != src_list) {
+                    if (strcmp(list_entry(tail, element_t, list)->value,
+                               list_entry(merge_list->prev, element_t, list)
+                                   ->value) <= 0) {
+                        tail = merge_list->prev;
+                    }
+                    if (tail == merge_list->prev &&
+                        strcmp(list_entry(merge_list->prev, element_t, list)
+                                   ->value,
+                               list_entry(src_list->next, element_t, list)
+                                   ->value) <= 0) {
+                        list_splice_tail(src_list, merge_list);
+                        INIT_LIST_HEAD(src_list);
+                        break;
+                    }
+                    if (strcmp(list_entry(merge_node, element_t, list)->value,
+                               list_entry(src_node, element_t, list)->value) <=
+                        0) {
+                        merge_safe = merge_node->next;
+                        list_del(merge_node);
+                        list_add_tail(merge_node, merge_list);
+                        merge_node = merge_safe;
+                    } else {
+                        src_safe = src_node->next;
+                        list_del(src_node);
+                        list_add_tail(src_node, merge_list);
+                        src_node = src_safe;
+                    }
+                }
+                while (
+                    strcmp(
+                        list_entry(merge_node, element_t, list)->value,
+                        list_entry(merge_node->next, element_t, list)->value) >
+                    0) {
+                    merge_safe = merge_node->next;
+                    list_del(merge_node);
+                    list_add_tail(merge_node, merge_list);
+                    merge_node = merge_safe;
+                }
+            }
+        }
+        if (descend)
+            q_reverse(merge_list);
+        return (q_size(merge_list));
+    }
     // https://leetcode.com/problems/merge-k-sorted-lists/
-    return 0;
 }
