@@ -266,7 +266,86 @@ void q_reverseK(struct list_head *head, int k)
 }
 
 /* Sort elements of queue in ascending/descending order */
-void q_sort(struct list_head *head, bool descend) {}
+void q_sort(struct list_head *head, bool descend)
+{
+    if (head != NULL && list_empty(head) == 0 && list_is_singular(head) == 0) {
+        struct list_head *merge_list_1;
+        struct list_head *merge_list_2;
+        struct list_head *safe_list_1;
+        struct list_head *safe_list_2;
+        int size = q_size(head);
+        int unmerge;
+        int len;
+        struct list_head *tmp;
+        do {
+            unmerge = 1;
+            len = 1;
+            int list_1_stride = 0;
+            int list_2_stride = 0;
+            merge_list_1 = head->next;
+            merge_list_2 = head->next;
+            tmp = NULL;
+            for (;
+                 merge_list_2 != head &&
+                 strcmp(
+                     list_entry(merge_list_2, element_t, list)->value,
+                     list_entry(merge_list_2->next, element_t, list)->value) <=
+                     0;) {
+                merge_list_2 = merge_list_2->next;
+                len++;
+            }
+            tmp = merge_list_2->next;
+            for (;
+                 tmp != head && tmp->next != head &&
+                 strcmp(list_entry(tmp, element_t, list)->value,
+                        list_entry(tmp->next, element_t, list)->value) <= 0;) {
+                tmp = tmp->next;
+                unmerge++;
+            }
+            merge_list_2 = merge_list_2->next;
+            // merge
+            while ((list_1_stride < len) && (list_2_stride < unmerge)) {
+                // a<b
+                if (strcmp(list_entry(merge_list_1, element_t, list)->value,
+                           list_entry(merge_list_2, element_t, list)->value) <=
+                    0) {
+                    safe_list_1 = merge_list_1->next;
+                    list_del(merge_list_1);
+                    list_add_tail(merge_list_1, head);
+                    merge_list_1 = safe_list_1;
+                    ++list_1_stride;
+                }
+                // a>b
+                else if (strcmp(
+                             list_entry(merge_list_1, element_t, list)->value,
+                             list_entry(merge_list_2, element_t, list)->value) >
+                         0) {
+                    safe_list_2 = merge_list_2->next;
+                    list_del(merge_list_2);
+                    list_add_tail(merge_list_2, head);
+                    merge_list_2 = safe_list_2;
+                    ++list_2_stride;
+                }
+            }
+            while ((list_1_stride < len) && (list_2_stride == unmerge)) {
+                safe_list_1 = merge_list_1->next;
+                list_del(merge_list_1);
+                list_add_tail(merge_list_1, head);
+                merge_list_1 = safe_list_1;
+                ++list_1_stride;
+            }
+            while ((list_1_stride == len) && (list_2_stride < unmerge)) {
+                safe_list_2 = merge_list_2->next;
+                list_del(merge_list_2);
+                list_add_tail(merge_list_2, head);
+                merge_list_2 = safe_list_2;
+                ++list_2_stride;
+            }
+        } while ((len + unmerge) != size);
+        if (descend)
+            q_reverse(head);
+    }
+}
 
 /* Remove every node which has a node with a strictly less value anywhere to
  * the right side of it */
