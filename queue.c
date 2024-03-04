@@ -143,8 +143,59 @@ bool q_delete_mid(struct list_head *head)
 /* Delete all nodes that have duplicate string */
 bool q_delete_dup(struct list_head *head)
 {
+    if (head == NULL)
+        return false;
+    else if (list_empty(head) != 0 || list_is_singular(head) != 0)
+        return true;
+    else if (list_empty(head) == 0) {
+        struct list_head *node = NULL;
+        struct list_head *safe = NULL;
+        int size = q_size(head);
+        struct list_head *struct_list = q_new();
+        struct list_head *tmp;
+        bool *is_single = malloc(sizeof(bool) * size);
+        int i = 0;
+        list_for_each_safe (node, safe, head) {
+            list_del(node);
+            tmp = struct_list->next;
+            if (struct_list->next != struct_list) {
+                for (int j = 0; j < i; j++) {
+                    if (strcmp(list_entry(tmp, element_t, list)->value,
+                               list_entry(node, element_t, list)->value) == 0) {
+                        free(list_entry(node, element_t, list)->value);
+                        free(list_entry(node, element_t, list));
+                        is_single[j] = false;
+                        node = NULL;
+                        break;
+                    }
+                    tmp = tmp->next;
+                }
+            }
+            if (node) {
+                list_add_tail(node, struct_list);
+                is_single[i] = true;
+                ++i;
+            }
+        }
+        for (int j = 0; j < i; j++) {
+            node = struct_list->next;
+            list_del(node);
+            if (is_single[j]) {
+                list_add_tail(node, head);
+            } else {
+                free((list_entry(node, element_t, list)->value));
+                free(list_entry(node, element_t, list));
+            }
+        }
+        free(struct_list);
+        free(is_single);
+        node = NULL;
+        safe = NULL;
+        struct_list = NULL;
+        return true;
+    }
     // https://leetcode.com/problems/remove-duplicates-from-sorted-list-ii/
-    return true;
+    return false;
 }
 
 /* Swap every two adjacent nodes */
