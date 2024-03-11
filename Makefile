@@ -1,6 +1,11 @@
 CC = gcc
 CFLAGS = -O1 -g -Wall -Werror -Idudect -I.
 
+LDFLAGS :=
+MCTS = mcts
+MCTS_CFLAGS := $(CFLAGS) -D USE_MCTS
+MCTS_LDFLAGS := $(LDFLAGS) -lm
+
 # Emit a warning should any variable-length array be found within the code.
 CFLAGS += -Wvla
 
@@ -40,9 +45,18 @@ $(GIT_HOOKS):
 OBJS := qtest.o report.o console.o harness.o queue.o \
         random.o dudect/constant.o dudect/fixture.o dudect/ttest.o \
         shannon_entropy.o \
-        linenoise.o web.o
+        linenoise.o web.o \
+	game.o \
+	mt19937-64.o \
+	zobrist.o \
+	agents/negamax.o \
+	main.o
 
 deps := $(OBJS:%.o=.%.o.d)
+deps += $(MCTS).d
+
+$(MCTS): main.c agents/mcts.c game.c
+	$(CC) -o $@ $^ $(MCTS_CFLAGS) $(MCTS_LDFLAGS)
 
 qtest: $(OBJS)
 	$(VECHO) "  LD\t$@\n"
@@ -78,6 +92,7 @@ clean:
 	rm -f $(OBJS) $(deps) *~ qtest /tmp/qtest.*
 	rm -rf .$(DUT_DIR)
 	rm -rf *.dSYM
+	-$(RM) $(PROG) $(OBJS) $(deps) $(MCTS)
 	(cd traces; rm -f *~)
 
 distclean: clean
