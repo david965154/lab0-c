@@ -7,8 +7,7 @@ RL = rl
 MCTS = mcts
 RL_CFLAGS := $(CFLAGS) -D USE_RL
 MCTS_CFLAGS := $(CFLAGS) -D USE_MCTS
-# mcts
-LDFLAGS += $(LDFLAGS) -lm
+MCTS_LDFLAGS := $(LDFLAGS) -lm
 
 # Emit a warning should any variable-length array be found within the code.
 CFLAGS += -Wvla
