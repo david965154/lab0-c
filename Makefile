@@ -2,7 +2,10 @@ CC = gcc
 CFLAGS = -O1 -g -Wall -Werror -Idudect -I.
 
 LDFLAGS :=
+TRAIN = train
+RL = rl
 MCTS = mcts
+RL_CFLAGS := $(CFLAGS) -D USE_RL
 MCTS_CFLAGS := $(CFLAGS) -D USE_MCTS
 MCTS_LDFLAGS := $(LDFLAGS) -lm
 
@@ -53,7 +56,15 @@ OBJS := qtest.o report.o console.o harness.o queue.o \
 	main.o
 
 deps := $(OBJS:%.o=.%.o.d)
+deps += $(RL).d
+deps += $(TRAIN).d
 deps += $(MCTS).d
+
+$(RL): main.c agents/reinforcement_learning.c game.c
+	$(CC) -o $@ $^ $(RL_CFLAGS)
+
+$(TRAIN): $(TRAIN).c agents/reinforcement_learning.c game.c
+	$(CC) $(CFLAGS) -o $@ $^
 
 $(MCTS): main.c agents/mcts.c game.c
 	$(CC) -o $@ $^ $(MCTS_CFLAGS) $(MCTS_LDFLAGS)
@@ -92,7 +103,8 @@ clean:
 	rm -f $(OBJS) $(deps) *~ qtest /tmp/qtest.*
 	rm -rf .$(DUT_DIR)
 	rm -rf *.dSYM
-	-$(RM) $(PROG) $(OBJS) $(deps) $(MCTS)
+	-$(RM) $(PROG) $(OBJS) $(deps) $(TRAIN) $(RL) $(MCTS)
+	-$(RM) *.bin
 	(cd traces; rm -f *~)
 
 distclean: clean
