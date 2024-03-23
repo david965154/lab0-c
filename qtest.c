@@ -75,6 +75,8 @@ static int string_length = MAXSTRING;
 
 static int descend = 0;
 
+extern void q_shuffle(struct list_head *head);
+
 #define MIN_RANDSTR_LEN 5
 #define MAX_RANDSTR_LEN 10
 static const char charset[] = "abcdefghijklmnopqrstuvwxyz";
@@ -875,6 +877,29 @@ static bool do_merge(int argc, char *argv[])
     return ok && !error_check();
 }
 
+static bool do_shuffle(int argc, char *argv[])
+{
+    if (argc != 1) {
+        report(1, "%s takes no arguments", argv[0]);
+        return false;
+    }
+
+    if (!current || !current->q) {
+        report(3, "Warning: Calling shuffle on null queue");
+        return false;
+    }
+    error_check();
+
+    set_noallocate_mode(true);
+    if (exception_setup(true))
+        q_shuffle(current->q);
+    exception_cancel();
+
+    set_noallocate_mode(false);
+    q_show(3);
+    return !error_check();
+}
+
 static bool is_circular()
 {
     struct list_head *cur = current->q->next;
@@ -1012,8 +1037,56 @@ static bool do_next(int argc, char *argv[])
     return q_show(0);
 }
 
+static bool do_ttt(int argc, char *argv[])
+{
+    if (argc != 1) {
+        report(1, "%s takes too much arguments", argv[0]);
+        return false;
+    }
+
+    if (!current || !current->q) {
+        report(3, "Warning: Calling ascend on null queue");
+        return false;
+    }
+    error_check();
+
+
+    int cnt = q_size(current->q);
+    if (!cnt)
+        report(3, "Warning: Calling ascend on empty queue");
+    else if (cnt < 2)
+        report(3, "Warning: Calling ascend on single node");
+    error_check();
+
+    if (exception_setup(true))
+        current->size = q_ascend(current->q);
+    set_noallocate_mode(false);
+
+    bool ok = true;
+
+    cnt = current->size;
+    if (current->size) {
+        for (struct list_head *cur_l = current->q->next;
+             cur_l != current->q && --cnt; cur_l = cur_l->next) {
+            element_t *item, *next_item;
+            item = list_entry(cur_l, element_t, list);
+            next_item = list_entry(cur_l->next, element_t, list);
+            if (strcmp(item->value, next_item->value) > 0) {
+                report(1,
+                       "ERROR: At least one node violated the ordering rule");
+                ok = false;
+                break;
+            }
+        }
+    }
+
+    q_show(3);
+    return ok && !error_check();
+}
+
 static void console_init()
 {
+    ADD_COMMAND(shuffle, "Shuffle all nodes in a random order", "");
     ADD_COMMAND(new, "Create new queue", "");
     ADD_COMMAND(free, "Delete queue", "");
     ADD_COMMAND(prev, "Switch to previous queue", "");
@@ -1052,6 +1125,7 @@ static void console_init()
                 "");
     ADD_COMMAND(reverseK, "Reverse the nodes of the queue 'K' at a time",
                 "[K]");
+    ADD_COMMAND(ttt, "Run tic-tac-toe", "");
     add_param("length", &string_length, "Maximum length of displayed string",
               NULL);
     add_param("malloc", &fail_probability, "Malloc failure probability percent",

@@ -49,25 +49,25 @@ OBJS := qtest.o report.o console.o harness.o queue.o \
         random.o dudect/constant.o dudect/fixture.o dudect/ttest.o \
         shannon_entropy.o \
         linenoise.o web.o \
-	game.o \
-	mt19937-64.o \
-	zobrist.o \
-	agents/negamax.o \
-	main.o
+	# game.o \
+	# mt19937-64.o \
+	# zobrist.o \
+	# agents/negamax.o \
+	# main.o
 
-deps := $(OBJS:%.o=.%.o.d)
-deps += $(RL).d
-deps += $(TRAIN).d
-deps += $(MCTS).d
+# deps := $(OBJS:%.o=.%.o.d)
+# deps += $(RL).d
+# deps += $(TRAIN).d
+# deps += $(MCTS).d
 
-$(RL): main.c agents/reinforcement_learning.c game.c
-	$(CC) -o $@ $^ $(RL_CFLAGS)
+# $(RL): main.c agents/reinforcement_learning.c game.c
+# 	$(CC) -o $@ $^ $(RL_CFLAGS)
 
-$(TRAIN): $(TRAIN).c agents/reinforcement_learning.c game.c
-	$(CC) $(CFLAGS) -o $@ $^
+# $(TRAIN): $(TRAIN).c agents/reinforcement_learning.c game.c
+# 	$(CC) $(CFLAGS) -o $@ $^
 
-$(MCTS): main.c agents/mcts.c game.c
-	$(CC) -o $@ $^ $(MCTS_CFLAGS) $(MCTS_LDFLAGS)
+# $(MCTS): main.c agents/mcts.c game.c
+# 	$(CC) -o $@ $^ $(MCTS_CFLAGS) $(MCTS_LDFLAGS)
 
 qtest: $(OBJS)
 	$(VECHO) "  LD\t$@\n"
