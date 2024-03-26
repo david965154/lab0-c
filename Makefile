@@ -49,6 +49,12 @@ OBJS := qtest.o report.o console.o harness.o queue.o \
         random.o dudect/constant.o dudect/fixture.o dudect/ttest.o \
         shannon_entropy.o \
         linenoise.o web.o \
+
+CMPOBJS := report.o console.o harness.o queue.o \
+        random.o dudect/constant.o dudect/fixture.o dudect/ttest.o \
+        shannon_entropy.o \
+        linenoise.o web.o \
+		main.o timsort.o\
 	# game.o \
 	# mt19937-64.o \
 	# zobrist.o \
@@ -72,6 +78,11 @@ OBJS := qtest.o report.o console.o harness.o queue.o \
 qtest: $(OBJS)
 	$(VECHO) "  LD\t$@\n"
 	$(Q)$(CC) $(LDFLAGS) -o $@ $^ -lm
+
+compare: sortcmp
+
+sortcmp: $(CMPOBJS)
+	$(CC) $(LDFLAGS) -o $@ $^ -lm
 
 %.o: %.c
 	@mkdir -p .$(DUT_DIR)

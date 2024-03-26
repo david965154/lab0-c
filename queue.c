@@ -3,7 +3,7 @@
 #include <string.h>
 
 #include "queue.h"
-
+#include "sort_impl.h"
 
 #define likely(x) __builtin_expect(!!(x), 1)
 #define unlikely(x) __builtin_expect(!!(x), 0)
@@ -269,6 +269,81 @@ void q_reverseK(struct list_head *head, int k)
     }
 }
 
+
+/* Sort elements of queue in ascending/descending order */
+void my_sort(void *priv,
+             struct list_head *head,
+             bool descend,
+             list_cmp_func_t cmp)
+{
+    if (head != NULL && list_empty(head) == 0 && list_is_singular(head) == 0) {
+        struct list_head *merge_list_1;
+        struct list_head *merge_list_2;
+        struct list_head *safe_list_1;
+        struct list_head *safe_list_2;
+        int size = q_size(head);
+        int unmerge;
+        int len;
+        struct list_head *tmp;
+        do {
+            unmerge = 1;
+            len = 1;
+            int list_1_stride = 0;
+            int list_2_stride = 0;
+            merge_list_1 = head->next;
+            merge_list_2 = head->next;
+            tmp = NULL;
+            for (; merge_list_2 != head &&
+                   cmp(priv, merge_list_2, merge_list_2->next) <= 0;) {
+                merge_list_2 = merge_list_2->next;
+                len++;
+            }
+            tmp = merge_list_2->next;
+            for (; tmp != head && tmp->next != head &&
+                   cmp(priv, tmp, tmp->next) <= 0;) {
+                tmp = tmp->next;
+                unmerge++;
+            }
+            merge_list_2 = merge_list_2->next;
+            // merge
+            while ((list_1_stride < len) && (list_2_stride < unmerge)) {
+                // a<b
+                if (cmp(priv, merge_list_1, merge_list_2) <= 0) {
+                    safe_list_1 = merge_list_1->next;
+                    list_del(merge_list_1);
+                    list_add_tail(merge_list_1, head);
+                    merge_list_1 = safe_list_1;
+                    ++list_1_stride;
+                }
+                // a>b
+                else if (cmp(priv, merge_list_1, merge_list_2) > 0) {
+                    safe_list_2 = merge_list_2->next;
+                    list_del(merge_list_2);
+                    list_add_tail(merge_list_2, head);
+                    merge_list_2 = safe_list_2;
+                    ++list_2_stride;
+                }
+            }
+            while ((list_1_stride < len) && (list_2_stride == unmerge)) {
+                safe_list_1 = merge_list_1->next;
+                list_del(merge_list_1);
+                list_add_tail(merge_list_1, head);
+                merge_list_1 = safe_list_1;
+                ++list_1_stride;
+            }
+            while ((list_1_stride == len) && (list_2_stride < unmerge)) {
+                safe_list_2 = merge_list_2->next;
+                list_del(merge_list_2);
+                list_add_tail(merge_list_2, head);
+                merge_list_2 = safe_list_2;
+                ++list_2_stride;
+            }
+        } while ((len + unmerge) != size);
+        if (descend)
+            q_reverse(head);
+    }
+}
+
 /* Sort elements of queue in ascending/descending order */
 void q_sort(struct list_head *head, bool descend)
 {
@@ -350,6 +425,7 @@ void q_sort(struct list_head *head, bool descend)
             q_reverse(head);
     }
 }
+
 
 /* Remove every node which has a node with a strictly less value anywhere to
  * the right side of it */
@@ -516,23 +592,18 @@ void q_shuffle(struct list_head *head)
     }
 }
 
-static int cmp(const struct list_head *a, const struct list_head *b)
-{
-    element_t *ela, *elb;
 
-    ela = list_entry(a, element_t, list);
-    elb = list_entry(b, element_t, list);
 
-    return strcmp(ela->value, elb->value);
-}
-
-static struct list_head *merge(struct list_head *a, struct list_head *b)
+static struct list_head *merge(void *priv,
+                               list_cmp_func_t cmp,
+                               struct list_head *a,
+                               struct list_head *b)
 {
     struct list_head *head = NULL, **tail = &head;
 
     for (;;) {
         /* if equal, take 'a' -- important for sort stability */
-        if (cmp(a, b) <= 0) {
+        if (cmp(priv, a, b) <= 0) {
             *tail = a;
             tail = &a->next;
             a = a->next;
@@ -553,7 +624,9 @@ static struct list_head *merge(struct list_head *a, struct list_head *b)
     return head;
 }
 
-static void merge_final(struct list_head *head,
+static void merge_final(void *priv,
+                        list_cmp_func_t cmp,
+                        struct list_head *head,
                         struct list_head *a,
                         struct list_head *b)
 {
@@ -562,7 +635,7 @@ static void merge_final(struct list_head *head,
 
     for (;;) {
         /* if equal, take 'a' -- important for sort stability */
-        if (cmp(a, b) <= 0) {
+        if (cmp(priv, a, b) <= 0) {
             tail->next = a;
             a->prev = tail;
             tail = a;
@@ -585,7 +658,7 @@ static void merge_final(struct list_head *head,
     tail->next = b;
     do {
         if (unlikely(!++count))
-            cmp(b, b);
+            cmp(priv, b, b);
         b->prev = tail;
         tail = b;
         b = b->next;
@@ -596,14 +669,16 @@ static void merge_final(struct list_head *head,
     head->prev = tail;
 }
 
-void list_sort(struct list_head *head, bool descend)
+void list_sort(void *priv,
+               struct list_head *head,
+               bool descend,
+               list_cmp_func_t cmp)
 {
     struct list_head *list = head->next, *pending = NULL;
     size_t count = 0; /* Count of pending */
 
-    if (list == head->prev) /* Zero or one elements */
+    if (head == head->prev) /* Zero or one elements */
         return;
-
     /* Convert to a null-terminated singly-linked list. */
     head->prev->next = NULL;
 
@@ -618,7 +693,7 @@ void list_sort(struct list_head *head, bool descend)
         if (likely(bits)) {
             struct list_head *a = *tail, *b = a->prev;
 
-            a = merge(b, a);
+            a = merge(priv, cmp, b, a);
             /* Install the merged result in place of the inputs */
             a->prev = b->prev;
             *tail = a;
@@ -640,11 +715,11 @@ void list_sort(struct list_head *head, bool descend)
 
         if (!next)
             break;
-        list = merge(pending, list);
+        list = merge(priv, cmp, pending, list);
         pending = next;
     }
     /* The final merge, rebuilding prev links */
-    merge_final(head, pending, list);
+    merge_final(priv, cmp, head, pending, list);
     if (descend)
         q_reverse(head);
 }
