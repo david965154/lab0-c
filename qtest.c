@@ -26,6 +26,9 @@
 /* Shannon entropy */
 extern double shannon_entropy(const uint8_t *input_data);
 extern int show_entropy;
+extern int run_ttt(int MODE);
+extern int trainRL();
+
 
 /* Our program needs to use regular malloc/free */
 #define INTERNAL 1
@@ -1088,8 +1091,37 @@ bool do_listsort(int argc, char *argv[])
     return ok && !error_check();
 }
 
+static bool do_ttt(int argc, char *argv[])
+{
+    int MODE = 0;
+    if (argc == 2) {
+        if (!get_int(argv[1], &MODE)) {
+            report(1, "Invalid MODE number");
+            return false;
+        }
+        if (MODE > 2 || MODE < 0) {
+            report(1, "Invalid MODE number");
+            return false;
+        }
+    } else {
+        report(1, "Please provide MODE number");
+        return false;
+    }
+    FILE *fptr = fopen("state_value.bin", "rb");
+    if (MODE == 1 && !fptr) {
+        printf("No state value table, start to training...");
+        trainRL();
+    }
+    run_ttt(MODE);
+    return true && !error_check();
+}
+
 static void console_init()
 {
+    ADD_COMMAND(ttt,
+                "Play Tic-Tac-Toe, MODE 0 for PvE with MCTS, 1 for EvE with "
+                "RL, 2 for EvE with Negamax",
+                "[MODE]");
     ADD_COMMAND(listsort,
                 "Sort queue in ascending/descening order with list sort", "");
     ADD_COMMAND(shuffle, "Shuffle all nodes in a random order", "");

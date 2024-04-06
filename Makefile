@@ -49,11 +49,6 @@ $(GIT_HOOKS):
 OBJS := qtest.o report.o console.o harness.o queue.o \
         random.o dudect/constant.o dudect/fixture.o dudect/ttest.o \
         shannon_entropy.o \
-        linenoise.o web.o
-
-TTTOBJS := qtestttt.o report.o console.o harness.o queue.o \
-        random.o dudect/constant.o dudect/fixture.o dudect/ttest.o \
-        shannon_entropy.o \
         linenoise.o web.o \
 		game.o \
 		mt19937-64.o \
@@ -71,7 +66,6 @@ CMPOBJS := report.o console.o harness.o queue.o \
 		cmp.o timsort.o
 
 deps := $(OBJS:%.o=.%.o.d)
-deps += $(TTTOBJS:%.o=.%.o.d)
 deps += $(CMPOBJS:%.o=.%.o.d)
 deps += $(RL).d
 deps += $(TRAIN).d
@@ -90,10 +84,6 @@ $(MCTS): run_ttt.c agents/mcts.c game.c
 qtest: $(OBJS)
 	$(VECHO) "  LD\t$@\n"
 	$(Q)$(CC) $(LDFLAGS) -o $@ $^ -lm
-
-qtestttt: $(TTTOBJS)
-	$(VECHO) "  LD\t$@\n"
-	$(Q)$(CC) $(LDFLAGS) -o $@ $^ $(TTT_CFLAGS) -lm
 
 sortcmp: $(CMPOBJS)
 	$(CC) $(LDFLAGS) -o $@ $^ -lm
@@ -127,11 +117,10 @@ valgrind: valgrind_existence
 
 clean:
 	rm -f $(OBJS) $(deps) *~ qtest /tmp/qtest.*
-	rm -f $(OBJS) $(deps) *~ qtestttt /tmp/qtestttt.*
 	rm -f $(OBJS) $(deps) *~ sortcmp /tmp/sortcmp.*
 	rm -rf .$(DUT_DIR)
 	rm -rf *.dSYM
-	-$(RM) $(PROG) $(OBJS) $(TTTOBJS) $(CMPOBJS) $(deps) $(TRAIN) $(RL) $(MCTS)
+	-$(RM) $(PROG) $(OBJS) $(CMPOBJS) $(deps) $(TRAIN) $(RL) $(MCTS)
 	-$(RM) *.bin
 	(cd traces; rm -f *~)
 
