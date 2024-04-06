@@ -1,6 +1,5 @@
 CC = gcc
 CFLAGS = -O1 -g -Wall -Werror -Idudect -I.
-
 LDFLAGS :=
 TRAIN = train
 RL = rl
@@ -8,6 +7,7 @@ MCTS = mcts
 RL_CFLAGS := $(CFLAGS) -D USE_RL
 MCTS_CFLAGS := $(CFLAGS) -D USE_MCTS
 MCTS_LDFLAGS := $(LDFLAGS) -lm
+TTT_CFLAGS := $(CFLAGS) -D TTT
 
 # Emit a warning should any variable-length array be found within the code.
 CFLAGS += -Wvla
@@ -48,38 +48,51 @@ $(GIT_HOOKS):
 OBJS := qtest.o report.o console.o harness.o queue.o \
         random.o dudect/constant.o dudect/fixture.o dudect/ttest.o \
         shannon_entropy.o \
+        linenoise.o web.o
+
+TTTOBJS := qtestttt.o report.o console.o harness.o queue.o \
+        random.o dudect/constant.o dudect/fixture.o dudect/ttest.o \
+        shannon_entropy.o \
         linenoise.o web.o \
+		game.o \
+		mt19937-64.o \
+		zobrist.o \
+		agents/negamax.o \
+		agents/mcts.o \
+		agents/reinforcement_learning.o \
+		train.o \
+		run_ttt.o
 
 CMPOBJS := report.o console.o harness.o queue.o \
         random.o dudect/constant.o dudect/fixture.o dudect/ttest.o \
         shannon_entropy.o \
         linenoise.o web.o \
-		main.o timsort.o\
-	# game.o \
-	# mt19937-64.o \
-	# zobrist.o \
-	# agents/negamax.o \
-	# main.o
+		cmp.o timsort.o
 
-# deps := $(OBJS:%.o=.%.o.d)
-# deps += $(RL).d
-# deps += $(TRAIN).d
-# deps += $(MCTS).d
+deps := $(OBJS:%.o=.%.o.d)
+deps += $(TTTOBJS:%.o=.%.o.d)
+deps += $(CMPOBJS:%.o=.%.o.d)
+deps += $(RL).d
+deps += $(TRAIN).d
+deps += $(MCTS).d
 
-# $(RL): main.c agents/reinforcement_learning.c game.c
-# 	$(CC) -o $@ $^ $(RL_CFLAGS)
 
-# $(TRAIN): $(TRAIN).c agents/reinforcement_learning.c game.c
-# 	$(CC) $(CFLAGS) -o $@ $^
+$(RL): run_ttt.c agents/reinforcement_learning.c game.c
+	$(CC) -o $@ $^ $(RL_CFLAGS)
 
-# $(MCTS): main.c agents/mcts.c game.c
-# 	$(CC) -o $@ $^ $(MCTS_CFLAGS) $(MCTS_LDFLAGS)
+$(TRAIN): $(TRAIN).c agents/reinforcement_learning.c game.c
+	$(CC) $(CFLAGS) -o $@ $^
+
+$(MCTS): run_ttt.c agents/mcts.c game.c
+	$(CC) -o $@ $^ $(MCTS_CFLAGS) $(MCTS_LDFLAGS)
 
 qtest: $(OBJS)
 	$(VECHO) "  LD\t$@\n"
 	$(Q)$(CC) $(LDFLAGS) -o $@ $^ -lm
 
-compare: sortcmp
+qtestttt: $(TTTOBJS)
+	$(VECHO) "  LD\t$@\n"
+	$(Q)$(CC) $(LDFLAGS) -o $@ $^ $(TTT_CFLAGS) -lm
 
 sortcmp: $(CMPOBJS)
 	$(CC) $(LDFLAGS) -o $@ $^ -lm
@@ -112,9 +125,11 @@ valgrind: valgrind_existence
 
 clean:
 	rm -f $(OBJS) $(deps) *~ qtest /tmp/qtest.*
+	rm -f $(OBJS) $(deps) *~ qtestttt /tmp/qtestttt.*
+	rm -f $(OBJS) $(deps) *~ sortcmp /tmp/sortcmp.*
 	rm -rf .$(DUT_DIR)
 	rm -rf *.dSYM
-	-$(RM) $(PROG) $(OBJS) $(deps) $(TRAIN) $(RL) $(MCTS)
+	-$(RM) $(PROG) $(OBJS) $(TTTOBJS) $(CMPOBJS) $(deps) $(TRAIN) $(RL) $(MCTS)
 	-$(RM) *.bin
 	(cd traces; rm -f *~)
 

@@ -1,27 +1,13 @@
-/* SPDX-License-Identifier: GPL-2.0 */
-#ifndef _LINUX_LIST_H
-#define _LINUX_LIST_H
+#pragma once
 
-#ifndef _LINUX_POISON_H
-#define _LINUX_POISON_H
-
-#ifndef LINUX_COMPILER_H
-#define LINUX_COMPILER_H
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #include <stddef.h>
 
-
-#ifdef __cplusplus
-#define LIST_POISON1 NULL
-#define LIST_POISON2 NULL
-#else
-/*
- * These are non-NULL pointers that will result in page faults
- * under normal circumstances, used to verify that nobody uses
- * non-initialized list entries.
- */
-#define LIST_POISON1 ((void *) 0x100 + POISON_POINTER_DELTA)
-#define LIST_POISON2 ((void *) 0x200 + POISON_POINTER_DELTA)
+#if defined(__GNUC__) || defined(__clang__)
+#define __HAVE_TYPEOF 1
 #endif
 
 #define WRITE_ONCE(var, val) (*((volatile typeof(val) *) (&(var))) = (val))
@@ -29,14 +15,6 @@
 #define READ_ONCE(var) (*((volatile typeof(var) *) (&(var))))
 
 #define __aligned(x) __attribute((__aligned__(x)))
-
-
-/* "typeof" is a GNU extension.
- * Reference: https://gcc.gnu.org/onlinedocs/gcc/Typeof.html
- */
-#if defined(__GNUC__) || defined(__clang__)
-#define __LIST_HAVE_TYPEOF 1
-#endif
 
 /**
  * container_of() - Calculate address of structure that contains address ptr
@@ -47,7 +25,7 @@
  * Return: @type pointer of structure containing ptr
  */
 #ifndef container_of
-#ifdef __LIST_HAVE_TYPEOF
+#ifdef __HAVE_TYPEOF
 #define container_of(ptr, type, member)                            \
     __extension__({                                                \
         const __typeof__(((type *) 0)->member) *__pmember = (ptr); \
@@ -140,9 +118,12 @@ static inline void __hlist_del(struct hlist_node *n)
  */
 static inline void hlist_del(struct hlist_node *n)
 {
-    __hlist_del(n);
-    n->next = LIST_POISON1;
-    n->pprev = LIST_POISON2;
+    struct hlist_node *next = n->next;
+    struct hlist_node **pprev = n->pprev;
+
+    *pprev = next;
+    if (next)
+        next->pprev = pprev;
 }
 
 /**
@@ -221,29 +202,6 @@ static inline void hlist_add_fake(struct hlist_node *n)
 }
 
 /**
- * hlist_fake: Is this node a fake hlist?
- * @h: Node to check for being a self-referential fake hlist.
- */
-static inline bool hlist_fake(struct hlist_node *h)
-{
-    return h->pprev == &h->next;
-}
-
-/**
- * hlist_is_singular_node - is node the only element of the specified hlist?
- * @n: Node to check for singularity.
- * @h: Header for potentially singular list.
- *
- * Check whether the node is the only node of the head without
- * accessing head, thus avoiding unnecessary cache misses.
- */
-static inline bool hlist_is_singular_node(struct hlist_node *n,
-                                          struct hlist_head *h)
-{
-    return !n->next && n->pprev == &h->first;
-}
-
-/**
  * hlist_move_list - Move an hlist
  * @old: hlist_head for old list.
  * @new: hlist_head for new list.
@@ -292,11 +250,16 @@ static inline void hlist_splice_init(struct hlist_head *from,
                               });                \
          pos = n)
 
+#ifdef __HAVE_TYPEOF
 #define hlist_entry_safe(ptr, type, member)                  \
     ({                                                       \
         typeof(ptr) ____ptr = (ptr);                         \
         ____ptr ? hlist_entry(____ptr, type, member) : NULL; \
     })
+#else
+#define hlist_entry_safe(ptr, type, member) \
+    (ptr) ? hlist_entry(ptr, type, member) : NULL
+#endif
 
 /**
  * hlist_for_each_entry	- iterate over list of given type
@@ -304,9 +267,15 @@ static inline void hlist_splice_init(struct hlist_head *from,
  * @head:	the head for your list.
  * @member:	the name of the hlist_node within the struct.
  */
+#ifdef __HAVE_TYPEOF
 #define hlist_for_each_entry(pos, head, member)                              \
     for (pos = hlist_entry_safe((head)->first, typeof(*(pos)), member); pos; \
          pos = hlist_entry_safe((pos)->member.next, typeof(*(pos)), member))
+#else
+#define hlist_for_each_entry(pos, head, member, type)              \
+    for (pos = hlist_entry_safe((head)->first, type, member); pos; \
+         pos = hlist_entry_safe((pos)->member.next, type, member))
+#endif
 
 /**
  * hlist_for_each_entry_continue - iterate over a hlist continuing after current
@@ -345,6 +314,6 @@ static inline void hlist_splice_init(struct hlist_head *from,
          });                                                          \
          pos = hlist_entry_safe(n, typeof(*pos), member))
 
-#endif
-#endif
+#ifdef __cplusplus
+}
 #endif
